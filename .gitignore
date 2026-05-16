@@ -59,3 +59,6 @@ sign-language-interpreter.html
 
 # ML model files
 *.task
+
+# RTRP Template directory
+RTRP_Template/
