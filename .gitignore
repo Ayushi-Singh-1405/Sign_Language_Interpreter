@@ -44,3 +44,18 @@ models/*.joblib
 
 # HTML exports
 sign-language-interpreter.html
+
+# Archives
+*.zip
+
+# Generated PDFs
+*.pdf
+
+# LaTeX build artifacts (continued)
+*.bbl
+*.blg
+*.acr
+*.alg
+
+# ML model files
+*.task
