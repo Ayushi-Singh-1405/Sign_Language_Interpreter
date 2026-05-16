@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASL Interpreter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;1,6..96,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #141414;
+      --bg-card: #1a1a1a;
+      --text-primary: #ffffff;
+      --text-secondary: #888888;
+      --accent: #c9a962;
+      --border: #2a2a2a;
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #faf9f7;
+      --bg-secondary: #f0eeeb;
+      --bg-card: #ffffff;
+      --text-primary: #1a1a1a;
+      --text-secondary: #666666;
+      --accent: #8b6914;
+      --border: #e0ddd8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Bodoni Moda', Georgia, serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    .title-font {
+      font-family: Didot, 'Bodoni MT', 'Times New Roman', serif;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+    }
+
+    /* Top Bar */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 2rem;
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border);
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+    }
+
+    .title {
+      font-family: Didot, 'Bodoni MT', 'Times New Roman', serif;
+      font-size: 1.8rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .status-badge {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 0.75rem;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      opacity: 0.7;
+    }
+
+    .status-badge.active {
+      border-color: #4ade80;
+      color: #4ade80;
+    }
+
+    .menu-btn {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Main */
+    .main {
+      padding-top: 90px;
+      padding-bottom: 2rem;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 2rem;
+      padding: 0 2rem;
+    }
+
+    /* Camera */
+    .camera-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .camera-feed {
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      aspect-ratio: 4/3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .camera-feed video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .camera-placeholder {
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .camera-placeholder svg {
+      width: 60px;
+      height: 60px;
+      margin-bottom: 0.75rem;
+      opacity: 0.4;
+    }
+
+    .fps-counter {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+      background: rgba(0,0,0,0.6);
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+    }
+
+    /* Recognition */
+    .recognition-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .letter-display {
+      text-align: center;
+      padding: 3rem 2rem;
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .letter-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .letter-value {
+      font-family: Didot, 'Bodoni MT', 'Times New Roman', serif;
+      font-size: 7rem;
+      line-height: 1;
+      color: var(--accent);
+    }
+
+    .confidence-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .confidence-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    /* Word Buffer */
+    .word-section {
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+    }
+
+    .section-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+    }
+
+    .word-buffer {
+      font-family: monospace;
+      font-size: 1.5rem;
+      letter-spacing: 0.15em;
+      min-height: 2.5rem;
+      background: var(--bg-secondary);
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      word-break: break-all;
+    }
+
+    /* History */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .history-item {
+      font-family: monospace;
+      font-size: 0.9rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      color: var(--text-secondary);
+      border-left: 2px solid var(--accent);
+    }
+
+    /* Controls */
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+    }
+
+    .ctrl-btn {
+      padding: 0.875rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-family: 'Bodoni Moda', serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .ctrl-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .ctrl-btn:active {
+      transform: scale(0.97);
+    }
+
+    .ctrl-btn.primary {
+      background: var(--accent);
+      color: var(--bg-primary);
+      border: none;
+    }
+
+    /* ASL Reference */
+    .asl-reference {
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .asl-grid {
+      display: grid;
+      grid-template-columns: repeat(13, 1fr);
+      gap: 0.25rem;
+      font-family: monospace;
+      font-size: 0.7rem;
+    }
+
+    .asl-letter {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      color: var(--text-secondary);
+    }
+
+    .asl-letter.highlight {
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+
+    /* Keyboard Hint */
+    .keyboard-hint {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-top: 1rem;
+      letter-spacing: 0.05em;
+    }
+
+    .keyboard-hint kbd {
+      background: var(--bg-card);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      margin: 0 0.25rem;
+    }
+
+    /* Side Panel */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      opacity: 0;
+      visibility: hidden;
+      z-index: 200;
+      transition: all 0.3s;
+    }
+
+    .overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .side-panel {
+      position: fixed;
+      top: 0;
+      left: -380px;
+      width: 380px;
+      height: 100vh;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      padding: 2rem;
+      z-index: 201;
+      transition: left 0.3s;
+      overflow-y: auto;
+    }
+
+    .side-panel.active {
+      left: 0;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .panel-section {
+      margin-bottom: 2rem;
+    }
+
+    .panel-title {
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-text {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: var(--text-secondary);
+    }
+
+    .module-item {
+      padding: 0.75rem;
+      background: var(--bg-card);
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      border-left: 2px solid var(--accent);
+    }
+
+    .theme-btns {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .theme-btn {
+      flex: 1;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      text-align: center;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      color: #fff;
+    }
+
+    .theme-btn.active {
+      border-color: var(--accent);
+    }
+
+    .theme-btn.dark { background: #1a1a1a; }
+    .theme-btn.light { background: #f0eeeb; color: #1a1a1a; }
+
+    .demo-btn {
+      width: 100%;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px dashed var(--accent);
+      background: transparent;
+      color: var(--accent);
+      font-family: 'Bodoni Moda', serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 1rem;
+    }
+
+    .demo-btn:hover {
+      background: var(--accent);
+      color: var(--bg-primary);
+      border-style: solid;
+    }
+
+    /* Mobile */
+    @media (max-width: 900px) {
+      .content {
+        grid-template-columns: 1fr;
+        padding: 0 1rem;
+      }
+
+      .title {
+        font-size: 1.3rem;
+      }
+
+      .letter-value {
+        font-size: 5rem;
+      }
+
+      .asl-grid {
+        grid-template-columns: repeat(9, 1fr);
+      }
+
+      .side-panel {
+        width: 100%;
+        left: -100%;
+      }
+    }
+  </style>
+</head>
+<body data-theme="dark">
+  <!-- Top Bar -->
+  <header class="topbar">
+    <h1 class="title">Sign Language Interpreter</h1>
+    <span class="status-badge" id="statusBadge">Camera Off</span>
+    <button class="menu-btn" id="menuBtn">☰</button>
+  </header>
+
+  <!-- Side Panel -->
+  <div class="overlay" id="overlay"></div>
+  <aside class="side-panel" id="sidePanel">
+    <button class="close-btn" id="closeBtn">✕</button>
+
+    <div class="panel-section">
+      <h3 class="panel-title">About</h3>
+      <p class="panel-text">
+        Real-time ASL gesture recognition system. Translates American Sign Language 
+        alphabet into text using computer vision and machine learning.
+      </p>
+    </div>
+
+    <div class="panel-section">
+      <h3 class="panel-title">Modules</h3>
+      <div class="module-item">MediaPipe — Hand Detection</div>
+      <div class="module-item">OpenCV — Video Processing</div>
+      <div class="module-item">scikit-learn — Classification</div>
+      <div class="module-item">pyttsx3 — Text-to-Speech</div>
+    </div>
+
+    <div class="panel-section">
+      <h3 class="panel-title">Theme</h3>
+      <div class="theme-btns">
+        <button class="theme-btn dark active" data-theme="dark">Dark</button>
+        <button class="theme-btn light" data-theme="light">Light</button>
+      </div>
+    </div>
+
+    <button class="demo-btn" id="demoBtn">Demo Detection</button>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="content">
+      <!-- Left: Camera -->
+      <div class="camera-section">
+        <div class="camera-feed" id="cameraFeed">
+          <video id="video" autoplay></video>
+          <div class="camera-placeholder" id="cameraPlaceholder">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 15.2c-1.9 0-3.5-1.6-3.5-3.5S10.1 8.2 12 8.2s3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5zm9-7.2h-3.2l-1.9-1.9c-.2-.2-.5-.2-.7 0l-1.9 1.9H9.2c-1.1 0-2 .9-2 2v9.8c0 1.1.9 2 2 2h13.6c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/>
+            </svg>
+            <div>Camera Feed</div>
+          </div>
+          <div class="fps-counter" id="fpsCounter">-- FPS</div>
+        </div>
+
+        <div class="keyboard-hint">
+          <kbd>S</kbd> Start &nbsp; <kbd>Q</kbd> Quit &nbsp; <kbd>A</kbd> Add &nbsp; <kbd>Space</kbd> &nbsp; <kbd>D</kbd> Delete &nbsp; <kbd>C</kbd> Clear &nbsp; <kbd>H</kbd> Speak
+        </div>
+      </div>
+
+      <!-- Right: Recognition -->
+      <div class="recognition-panel">
+        <div class="letter-display">
+          <div class="letter-label">Current Letter</div>
+          <div class="letter-value" id="currentLetter">—</div>
+          <div class="confidence-row">
+            <span>Confidence</span>
+            <div class="confidence-bar">
+              <div class="confidence-fill" id="confidenceFill"></div>
+            </div>
+            <span id="confidencePercent">0%</span>
+          </div>
+        </div>
+
+        <div class="word-section">
+          <div class="section-label">Word Buffer</div>
+          <div class="word-buffer" id="wordBuffer">_</div>
+        </div>
+
+        <div class="word-section">
+          <div class="section-label">Recent Words</div>
+          <div class="history-list" id="historyList">
+            <div class="history-item" style="opacity:0.4">No words yet</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="ctrl-btn primary" id="startBtn">Start</button>
+          <button class="ctrl-btn" id="stopBtn">Stop</button>
+          <button class="ctrl-btn" id="addLetterBtn">Add Letter</button>
+          <button class="ctrl-btn" id="spaceBtn">Space</button>
+          <button class="ctrl-btn" id="deleteBtn">Delete</button>
+          <button class="ctrl-btn" id="speakBtn">Speak</button>
+          <button class="ctrl-btn" id="clearBtn">Clear</button>
+        </div>
+
+        <div class="asl-reference">
+          <div class="section-label">ASL Alphabet</div>
+          <div class="asl-grid" id="aslGrid"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Elements
+    const menuBtn = document.getElementById('menuBtn');
+    const closeBtn = document.getElementById('closeBtn');
+    const sidePanel = document.getElementById('sidePanel');
+    const overlay = document.getElementById('overlay');
+    const themeBtns = document.querySelectorAll('.theme-btn');
+    const demoBtn = document.getElementById('demoBtn');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const addLetterBtn = document.getElementById('addLetterBtn');
+    const spaceBtn = document.getElementById('spaceBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const speakBtn = document.getElementById('speakBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const currentLetterEl = document.getElementById('currentLetter');
+    const confidenceFill = document.getElementById('confidenceFill');
+    const confidencePercent = document.getElementById('confidencePercent');
+    const wordBuffer = document.getElementById('wordBuffer');
+    const historyList = document.getElementById('historyList');
+    const statusBadge = document.getElementById('statusBadge');
+    const aslGrid = document.getElementById('aslGrid');
+    const video = document.getElementById('video');
+    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+    const fpsCounter = document.getElementById('fpsCounter');
+    const cameraFeed = document.getElementById('cameraFeed');
+
+    let isRunning = false;
+    let demoInterval = null;
+    let wordHistory = [];
+    let mediaStream = null;
+    let detectionLoop = null;
+    let canvas = document.createElement('canvas');
+    let ctx = canvas.getContext('2d');
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+    let fps = 0;
+
+    canvas.width = 640;
+    canvas.height = 480;
+
+    // Build ASL Grid
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    alphabet.split('').forEach(letter => {
+      const div = document.createElement('div');
+      div.className = 'asl-letter';
+      div.textContent = letter;
+      div.id = 'asl-' + letter;
+      aslGrid.appendChild(div);
+    });
+
+    // Side Panel
+    menuBtn.addEventListener('click', () => {
+      sidePanel.classList.add('active');
+      overlay.classList.add('active');
+    });
+
+    const closePanel = () => {
+      sidePanel.classList.remove('active');
+      overlay.classList.remove('active');
+    };
+
+    closeBtn.addEventListener('click', closePanel);
+    overlay.addEventListener('click', closePanel);
+
+    // Theme
+    themeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        themeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.body.setAttribute('data-theme', btn.dataset.theme);
+      });
+    });
+
+    // Highlight ASL letter
+    function highlightLetter(letter) {
+      document.querySelectorAll('.asl-letter').forEach(el => el.classList.remove('highlight'));
+      if (letter && letter !== '—') {
+        const el = document.getElementById('asl-' + letter);
+        if (el) el.classList.add('highlight');
+      }
+    }
+
+    // Start camera
+    async function startCamera() {
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: 'user' }
+        });
+        video.srcObject = mediaStream;
+        video.style.display = 'block';
+        cameraPlaceholder.style.display = 'none';
+        
+        video.onloadedmetadata = () => {
+          canvas.width = video.videoWidth || 640;
+          canvas.height = video.videoHeight || 480;
+        };
+        
+        return true;
+      } catch (err) {
+        console.error('Camera error:', err);
+        cameraPlaceholder.innerHTML = '<div style="color:#ff6b6b">Camera access denied</div>';
+        return false;
+      }
+    }
+
+    // Stop camera
+    function stopCamera() {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      if (detectionLoop) {
+        cancelAnimationFrame(detectionLoop);
+        detectionLoop = null;
+      }
+    }
+
+    // Draw landmarks on canvas
+    function drawLandmarks(landmarks, width, height) {
+      ctx.strokeStyle = '#4ade80';
+      ctx.lineWidth = 2;
+      
+      const connections = [
+        [0,1],[1,2],[2,3],[3,4],
+        [0,5],[5,6],[6,7],[7,8],
+        [0,9],[9,10],[10,11],[11,12],
+        [0,13],[13,14],[14,15],[15,16],
+        [0,17],[17,18],[18,19],[19,20],
+        [5,9],[9,13],[13,17]
+      ];
+      
+      connections.forEach(([i, j]) => {
+        if (landmarks[i] && landmarks[j]) {
+          ctx.beginPath();
+          ctx.moveTo(landmarks[i].x * width, landmarks[i].y * height);
+          ctx.lineTo(landmarks[j].x * width, landmarks[j].y * height);
+          ctx.stroke();
+        }
+      });
+      
+      landmarks.forEach((lm, i) => {
+        ctx.beginPath();
+        ctx.arc(lm.x * width, lm.y * height, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = i === 0 ? '#c9a962' : '#4ade80';
+        ctx.fill();
+      });
+    }
+
+    // Detection loop
+    async function detectionLoopFn() {
+      if (!isRunning) return;
+      
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+      ctx.restore();
+      
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsTime >= 1000) {
+        fps = frameCount;
+        frameCount = 0;
+        lastFpsTime = now;
+        fpsCounter.textContent = fps + ' FPS';
+      }
+      
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+      
+      try {
+        const response = await fetch('/api/annotate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.annotated_image) {
+            const img = new Image();
+            img.onload = () => {
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = data.annotated_image;
+          }
+          
+          if (data.detected) {
+            statusBadge.textContent = 'Hand Detected';
+            statusBadge.classList.add('active');
+            
+            if (data.letter && data.letter !== '-') {
+              currentLetterEl.textContent = data.letter;
+              highlightLetter(data.letter);
+              confidenceFill.style.width = (data.confidence * 100) + '%';
+              confidencePercent.textContent = Math.round(data.confidence * 100) + '%';
+            }
+          } else {
+            statusBadge.textContent = 'Searching...';
+            statusBadge.classList.remove('active');
+          }
+        }
+      } catch (err) {
+        console.error('Detection error:', err);
+      }
+      
+      const displayCanvas = document.createElement('canvas');
+      displayCanvas.width = canvas.width;
+      displayCanvas.height = canvas.height;
+      const displayCtx = displayCanvas.getContext('2d');
+      
+      displayCtx.drawImage(canvas, 0, 0);
+      video.style.display = 'none';
+      cameraFeed.querySelector('canvas')?.remove();
+      displayCanvas.style.cssText = 'width:100%;height:100%;object-fit:cover;transform:scaleX(-1);';
+      cameraFeed.appendChild(displayCanvas);
+      
+      if (isRunning) {
+        requestAnimationFrame(detectionLoopFn);
+      }
+    }
+
+    // Demo
+    demoBtn.addEventListener('click', () => {
+      if (demoInterval) return;
+
+      const letters = 'HELLO'.split('');
+      let index = 0;
+      wordBuffer.textContent = '';
+      isRunning = true;
+
+      demoInterval = setInterval(() => {
+        if (index < letters.length) {
+          const letter = letters[index];
+          currentLetterEl.textContent = letter;
+          highlightLetter(letter);
+
+          let conf = 0;
+          const confInterval = setInterval(() => {
+            conf += 15;
+            confidenceFill.style.width = conf + '%';
+            confidencePercent.textContent = conf + '%';
+            if (conf >= 95) clearInterval(confInterval);
+          }, 30);
+
+          wordBuffer.textContent += letter;
+          index++;
+        } else {
+          clearInterval(demoInterval);
+          demoInterval = null;
+          isRunning = false;
+
+          if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance('Hello');
+            speechSynthesis.speak(utterance);
+          }
+
+          wordHistory.unshift('HELLO');
+          updateHistory();
+        }
+      }, 600);
+    });
+
+    // Update history
+    function updateHistory() {
+      if (wordHistory.length === 0) {
+        historyList.innerHTML = '<div class="history-item" style="opacity:0.4">No words yet</div>';
+        return;
+      }
+      historyList.innerHTML = wordHistory.slice(0, 5).map(word =>
+        `<div class="history-item">${word}</div>`
+      ).join('');
+    }
+
+    // Controls
+    startBtn.addEventListener('click', async () => {
+      if (!isRunning) {
+        const cameraOk = await startCamera();
+        if (cameraOk) {
+          isRunning = true;
+          statusBadge.textContent = 'Starting...';
+          startBtn.textContent = 'Running';
+          requestAnimationFrame(detectionLoopFn);
+        }
+      }
+    });
+
+    stopBtn.addEventListener('click', async () => {
+      isRunning = false;
+      stopCamera();
+      currentLetterEl.textContent = '—';
+      confidenceFill.style.width = '0%';
+      confidencePercent.textContent = '0%';
+      highlightLetter(null);
+      statusBadge.textContent = 'Camera Off';
+      statusBadge.classList.remove('active');
+      startBtn.textContent = 'Start';
+      cameraFeed.querySelector('canvas')?.remove();
+      video.style.display = 'none';
+      cameraPlaceholder.style.display = 'flex';
+      cameraPlaceholder.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 15.2c-1.9 0-3.5-1.6-3.5-3.5S10.1 8.2 12 8.2s3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5zm9-7.2h-3.2l-1.9-1.9c-.2-.2-.5-.2-.7 0l-1.9 1.9H9.2c-1.1 0-2 .9-2 2v9.8c0 1.1.9 2 2 2h13.6c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/>
+        </svg>
+        <div>Camera Feed</div>
+      `;
+      
+      try {
+        await fetch('/api/stop', { method: 'POST' });
+      } catch (e) {}
+    });
+
+    speakBtn.addEventListener('click', async () => {
+      let text = wordBuffer.textContent.trim();
+      if (text === '_' || text === '') {
+        console.log('No text to speak');
+        return;
+      }
+      
+      // Try server-side TTS first
+      try {
+        const response = await fetch('/api/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: text })
+        });
+        if (response.ok) {
+          console.log('Spoken via server:', text);
+          return;
+        }
+      } catch (e) {
+        console.log('Server TTS failed, trying browser:', e);
+      }
+      
+      // Fallback to browser TTS
+      if ('speechSynthesis' in window) {
+        console.log('Speaking via browser:', text);
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9;
+        speechSynthesis.speak(utterance);
+      }
+    });
+
+    addLetterBtn.addEventListener('click', () => {
+      const letter = currentLetterEl.textContent;
+      if (letter && letter !== '—' && letter !== '-') {
+        wordBuffer.textContent += letter;
+      }
+    });
+
+    spaceBtn.addEventListener('click', () => {
+      if (wordBuffer.textContent && wordBuffer.textContent !== '_' && !wordBuffer.textContent.endsWith(' ')) {
+        wordBuffer.textContent += ' ';
+      }
+    });
+
+    deleteBtn.addEventListener('click', () => {
+      if (wordBuffer.textContent && wordBuffer.textContent.length > 0 && wordBuffer.textContent !== '_') {
+        wordBuffer.textContent = wordBuffer.textContent.slice(0, -1);
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      wordBuffer.textContent = '_';
+      currentLetterEl.textContent = '—';
+      confidenceFill.style.width = '0%';
+      confidencePercent.textContent = '0%';
+      highlightLetter(null);
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 's' && !e.ctrlKey) startBtn.click();
+      if (e.key.toLowerCase() === 'q') stopBtn.click();
+      if (e.key.toLowerCase() === 'a') addLetterBtn.click();
+      if (e.key.toLowerCase() === ' ') spaceBtn.click();
+      if (e.key.toLowerCase() === 'd') deleteBtn.click();
+      if (e.key.toLowerCase() === 'c') clearBtn.click();
+      if (e.key.toLowerCase() === 'h') speakBtn.click();
+    });
+  </script>
+</body>
+</html>

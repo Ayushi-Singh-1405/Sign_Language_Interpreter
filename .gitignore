@@ -1,0 +1,46 @@
+# Data (large datasets)
+data/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Model files (if trained separately)
+models/*.pkl
+models/*.joblib
+*.h5
+*.pt
+
+# LaTeX build artifacts
+*.aux
+*.toc
+*.lot
+*.lof
+*.glo
+*.glsdefs
+*.acn
+*.ist
+*.synctex.gz
+*.out
+
+# Logs
+*.log
+
+# Linter cache
+.ruff_cache/
+
+# HTML exports
+sign-language-interpreter.html
